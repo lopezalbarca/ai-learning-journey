@@ -11,17 +11,24 @@ Welcome to my personal learning journey into the world of **Applied Artificial I
 - Develop a full portfolio of documented projects and tools
 - Explore infrastructure, MLOps, and automation around AI systems
 
-## 📅 Roadmap (12+ weeks)
+## 📅 Roadmap (12+ Weeks)
 
-| Week | Topic |
-|------|-------|
-| 1 | Prompt Engineering & LLM fundamentals |
-| 2 | Embeddings & vector stores |
-| 3 | RAG architecture |
-| 4 | Full RAG project: Doc Search |
-| 5–8 | MLOps + Infra for AI |
-| 9–12 | AI Automation & Product Architectures |
-| Bonus | Agents, LangGraph, Semantic Kernel, more... |
+| Phase                              | Week | Topic                                         |
+|------------------------------------|------|-----------------------------------------------|
+| 🧠 Fundamentals                     | [1](01-fundamentals/week-01-prompt-engineering) | Prompt Engineering & LLM fundamentals         |
+| 🧠 Fundamentals                     | [2](01-fundamentals/week-02-rag)               | Embeddings & vector stores                    |
+| 🧠 Fundamentals                     | [3](01-fundamentals/week-03-embeddings)        | RAG architecture                              |
+| 🧠 Fundamentals                     | [4](01-fundamentals/week-04-project-rag-docs)  | Full RAG project: Doc Search                  |
+| ⚙️ MLOps & Infra for AI             | [5](02-mlops-and-infra/week-05-mlops-basics)   | Model versioning, experiment tracking         |
+| ⚙️ MLOps & Infra for AI             | [6](02-mlops-and-infra/week-06-pipelines-tools)| Pipelines, orchestration, tools (e.g. Prefect)|
+| ⚙️ MLOps & Infra for AI             | [7](02-mlops-and-infra/week-07-ci-cd)          | CI/CD for AI + containerization               |
+| ⚙️ MLOps & Infra for AI             | [8](02-mlops-and-infra/week-08-monitoring)     | Monitoring, observability & reproducibility   |
+| 🤖 AI Automation & Product Design   | [9](03-automation-and-products/week-09-workflows) | Workflow automation (n8n, Zapier, etc.)   |
+| 🤖 AI Automation & Product Design   | [10](03-automation-and-products/week-10-agents)| Copilots, agents, and internal AI tools       |
+| 🤖 AI Automation & Product Design   | [11](03-automation-and-products/week-11-frontend-apis) | Frontend & APIs for AI-enabled products |
+| 🤖 AI Automation & Product Design   | [12](03-automation-and-products/week-12-project) | Final project: AI Product MVP             |
+| 🎁 Bonus Tracks                     | [→](bonus-tracks/)                             | Agents, LangGraph, Semantic Kernel, open R&D  |
+
 
 ## 🧠 Weekly Structure
 
