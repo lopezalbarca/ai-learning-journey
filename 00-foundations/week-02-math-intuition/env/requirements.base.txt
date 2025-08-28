@@ -1,0 +1,3 @@
+# Base requirements for Week 02
+numpy
+jupyter
