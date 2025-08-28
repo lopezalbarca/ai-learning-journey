@@ -17,7 +17,7 @@
 
 ---
 
-## Plan (sequence, not by days)
+## Plan: Your Step-by-Step Guide
 
 ### 1) Environment setup (manual learning path)
 > Recommended the first time to understand what the scripts do.
