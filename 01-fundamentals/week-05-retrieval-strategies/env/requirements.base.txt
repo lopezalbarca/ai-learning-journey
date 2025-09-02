@@ -1,0 +1,5 @@
+numpy
+openai
+faiss-cpu
+qdrant-client
+rank-bm25
