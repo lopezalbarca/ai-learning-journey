@@ -1,0 +1,9 @@
+openai
+numpy
+pandas
+faiss-cpu
+qdrant-client
+scikit-learn
+tqdm
+streamlit
+diskcache
