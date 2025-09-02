@@ -1,0 +1,34 @@
+[
+  {
+    "question": "What is Retrieval-Augmented Generation (RAG)?",
+    "answer": "A method that combines document retrieval with large language model generation to improve accuracy and grounding."
+  },
+  {
+    "question": "What does faithfulness mean in RAG evaluation?",
+    "answer": "Faithfulness measures whether the model's answer sticks to the retrieved context without hallucinations."
+  },
+  {
+    "question": "What does relevance mean in RAG evaluation?",
+    "answer": "Relevance measures whether the answer actually addresses the user’s question."
+  },
+  {
+    "question": "What does coverage mean in RAG evaluation?",
+    "answer": "Coverage measures whether the answer includes all key facts from the ground truth or retrieved evidence."
+  },
+  {
+    "question": "Why is cosine similarity used in retrieval systems?",
+    "answer": "Cosine similarity measures the angle between two vectors, making it effective for comparing embeddings regardless of magnitude."
+  },
+  {
+    "question": "What is the difference between lexical and semantic search?",
+    "answer": "Lexical search matches keywords literally, while semantic search uses embeddings to capture meaning beyond exact words."
+  },
+  {
+    "question": "Why do we need vector databases for RAG?",
+    "answer": "Because they store embeddings efficiently and allow fast similarity search at scale, unlike relational databases."
+  },
+  {
+    "question": "What is a common risk when using LLMs as judges for evaluation?",
+    "answer": "They may introduce bias or hallucinate evaluations, so results should be validated with human oversight."
+  }
+]
