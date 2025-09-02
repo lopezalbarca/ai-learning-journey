@@ -1,0 +1,1 @@
+timestamp,query,latency_ms,prompt_tokens,completion_tokens,total_tokens,model,topk,cache_hit
