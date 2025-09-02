@@ -1,0 +1,24 @@
+# Python venv
+.venv/
+venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings
+.vscode/
+
+# Environment files
+env/requirements.txt
+
+# Data outputs
+exercises/data/top_5_movies.csv
+
+# OS files
+.DS_Store
+Thumbs.db
