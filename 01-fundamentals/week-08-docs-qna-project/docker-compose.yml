@@ -1,0 +1,31 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+  py-rag:
+    build:
+      context: ./python-service
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+
+  api:
+    build:
+      context: ./src/DocsQna.Api
+    environment:
+      - PY_RAG_BASE_URL=http://py-rag:8000
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - py-rag
+
+volumes:
+  qdrant_storage:

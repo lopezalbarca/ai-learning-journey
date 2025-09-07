@@ -1,35 +1,40 @@
-# W08 · Checklist
+# W08 · Checklist (with .NET Orchestration)
 
-### Setup
+### Setup (Exercises/Streamlit env)
 - [ ] Virtual environment created and activated.
 - [ ] Dependencies installed (`env/requirements.base.txt`).
 - [ ] `env/requirements.txt` generated and committed.
 
-### Ingest & Index
-- [ ] `01_ingest.py` parses docs, chunks, attaches metadata.
-- [ ] Embeddings generated and stored (FAISS or Qdrant).
+### Containers & Services
+- [ ] `docker compose` builds and runs (`qdrant`, `py-rag`, `.NET api`).
+- [ ] Healthchecks OK:  
+  - http://localhost:8080/ (.NET)  
+  - http://localhost:8000/docs (FastAPI)  
+  - http://localhost:6333/ (Qdrant)
 
-### Retrieval
-- [ ] `02_retrieval.py` returns top‑k passages + metadata.
-- [ ] Retrieved context is logged for inspection.
+### Python Service (FastAPI)
+- [ ] `/ingest` wired to real ingestion (chunk + embed + upsert).
+- [ ] `/qa` wired to retrieval + generation.
+- [ ] Response includes: `answer`, `citations`, `latency_ms`, `usage`, and retrieved context.
 
-### Generation (Grounded)
-- [ ] `03_generation.py` produces grounded answers with `[S#]` citations.
-- [ ] Generator returns a **structured result**: `answer`, `citations`, `latency_ms`, `usage` (tokens).
+### .NET API (Orchestration)
+- [ ] `/api/ingest` proxies to Python `/ingest`.
+- [ ] `/api/qa` proxies to Python `/qa`.
+- [ ] **Polly policies** enabled (retry/backoff, timeout, circuit-breaker).
+- [ ] Metrics recorded: `qa_requests_total`, `qa_latency_ms`.
 
-### Evaluation
+### Streamlit UI (Pro Mode)
+- [ ] Calls `.NET /api/qa` endpoint.
+- [ ] Toggle **“Show retrieved context”** displays chunks + metadata.
+- [ ] Cache implemented (in-memory or diskcache).
+- [ ] Each query logged in `runs/metrics.csv` (timestamp, query, latency_ms, tokens, cache_hit).
+
+### Evaluation & Report
 - [ ] Evalset (5–10 Q/A) defined.
-- [ ] `04_eval.py` computes **faithfulness**, **relevance**, **coverage**.
-- [ ] Results saved to CSV/Markdown.
-
-### Report
+- [ ] `04_eval.py` computes faithfulness, relevance, coverage.
+- [ ] Results saved in CSV/Markdown.
 - [ ] `05_report.md` completed with metrics and reflections.
 
-### Pro Mode — Product‑Minded Add‑Ons
-- [ ] **Traceability:** Streamlit UI includes **“Show retrieved context”** that reveals exact chunks + metadata.
-- [ ] **Cost/Performance:** Per‑query CSV logs with `latency_ms` and token `usage` (prompt/completion/total).
-- [ ] **Cache:** Simple cache by `(query, retriever_params)` with hit/miss stats.
-
 ### Consolidation
-- [ ] I can explain how ingestion, retrieval, generation, and evaluation connect.
-- [ ] I can describe strengths/limits of my Q&A pipeline and how I’d harden it for production.
+- [ ] I can explain the flow: Streamlit → .NET API → Python service → Qdrant/OpenAI → back.
+- [ ] I can reason about latency/cost using the logs in `runs/metrics.csv`.
