@@ -21,3 +21,11 @@
 ### Consolidation
 - [ ] `04_conceptual_questions.md` answered.
 - [ ] **Self-eval:** I can explain why reproducibility matters in ML projects.
+
+### .NET Hook (Serving MLflow)
+- [ ] `Tracking.Api` builds and runs (`dotnet run` or Docker).
+- [ ] `GET /healthz` returns status OK.
+- [ ] `GET /mlflow/experiments` shows experiments from MLflow.
+- [ ] `GET /mlflow/runs/{experimentId}` works and returns runs.
+- [ ] `GET /mlflow/runs/{runId}/artifacts` lists artifacts.
+- [ ] **Self-eval:** I can explain how the .NET API adds resilience and enterprise integration to MLflow tracking.
