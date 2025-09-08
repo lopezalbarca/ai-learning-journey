@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-server
+    command: ["bash", "-lc", "prefect server start --host 0.0.0.0"]
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+    ports:
+      - "4200:4200"
+
+  prefect-worker:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-worker
+    depends_on:
+      - prefect-server
+    working_dir: /app
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+    volumes:
+      - ./:/app
+    command: ["bash", "-lc", "prefect worker start -p process -q week-10"]
+
+  pipelines-api:
+    build:
+      context: ./src/Pipelines.Api
+      dockerfile: Dockerfile
+    container_name: pipelines-api
+    depends_on:
+      - prefect-server
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - PREFECT_API_URL=http://prefect-server:4200/api/
+      - ETL_DEPLOYMENT_ID=${ETL_DEPLOYMENT_ID:-}
+      - CSV_PATH=/workspace/runs/metrics.csv
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/workspace

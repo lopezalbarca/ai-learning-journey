@@ -1,29 +1,32 @@
 # W10 · Pipelines & Orchestration (MLOps & Infra)
 
-**Goal:** Design robust pipelines using a modern orchestrator (we’ll use **Prefect 2** as the primary tool) to handle **scheduling, dependencies, retries, timeouts, backoff, and resilience patterns**. By the end, you’ll be able to ship a small but production‑minded flow that runs on a schedule and survives transient failures.
+**Goal:** Design robust pipelines using **Prefect 2** (flows, tasks, scheduling, retries, timeouts, backoff, circuit breaker) **and** add a **.NET 8 Minimal API** that orchestrates these flows with production‑minded resilience (Polly). By the end, you’ll run your ETL on a schedule, trigger it via HTTP, and observe runs end‑to‑end.
 
 ---
 
 ## Learning outcomes
 - Model workflows as **flows** and **tasks** with clear dependencies.
 - Configure **retries**, **timeouts**, and **exponential backoff** for transient errors.
-- Add **circuit‑breaker / fallback** style resilience at the flow level.
-- Package a **scheduled deployment** (cron) with environment configuration.
-- Log and persist **run metadata** for observability (ids, states, durations).
+- Add **fallback/circuit‑breaker** style resilience at the flow level.
+- Create a **scheduled deployment** (cron) with timezone **Europe/Madrid**.
+- Orchestrate flows from a **.NET 8 Minimal API** with **HttpClientFactory + Polly** (retries, timeouts, circuit breaker).
+- Log and persist **run metadata** (ids, states, durations) for observability.
 
-> Note: We focus on **Prefect 2** for a smooth local developer experience. The same ideas translate to Airflow (DAGs, Operators, Sensors) if you prefer it later.
+> We use **Prefect 2** locally for a smooth dev experience. Concepts translate well to Airflow later if you prefer.
 
 ---
 
 ## Prerequisites
-- Python **3.11+**
-- Basic knowledge from W08–W09 (project structure, environments, logging/metrics mindset).
+- **Python 3.11+**
+- **.NET SDK 8.0+**
+- **Docker & Docker Compose**
+- Basic familiarity with Weeks 08–09 (project structure, logging/metrics mindset).
 
 ---
 
-## Plan: Your Step‑by‑Step Guide
+## Plan: Your Step-by-Step Guide
 
-### 1) Prepare your lab
+### 1) Prepare your Python lab
 ```bash
 python -m venv .venv
 # Linux/Mac
@@ -35,212 +38,132 @@ python -m pip install --upgrade pip
 pip install -r env/requirements.base.txt
 pip freeze > env/requirements.txt
 ```
-
-Base deps this week: `prefect`, `pandas`, `scikit-learn`, `httpx`, `pydantic`.
+Base deps: `prefect`, `pandas`, `scikit-learn`, `httpx`, `pydantic`.
 
 ---
 
 ### 2) First flow with dependencies
-Create `exercises/01_basic_flow.py`:
-```python
-from datetime import timedelta
-import random
-import time
-
-import httpx
-from prefect import flow, task
-from prefect.states import Failed
-
-@task
-def extract() -> dict:
-    # Simulate I/O
-    time.sleep(0.3)
-    return {"items": [1, 2, 3, 4, 5]}
-
-@task
-def transform(payload: dict) -> list[int]:
-    items = payload["items"]
-    return [i * 2 for i in items]
-
-@task
-def load(values: list[int]) -> int:
-    # Fake sink
-    return len(values)
-
-@flow(name="basic-etl")
-def etl():
-    data = extract()
-    doubled = transform(data)
-    count = load(doubled)
-    return {"count": count}
-
-if __name__ == "__main__":
-    print(etl())
+Open `exercises/01_basic_flow.py` and run it:
+```bash
+python exercises/01_basic_flow.py
 ```
-
-**What to observe**
-- Task dependency graph: `extract -> transform -> load`.
-- The **flow** is the orchestration boundary; tasks are units with retries/timeouts later.
+**Observe** the dependency graph: `extract -> transform -> load`, and that the **flow** is the orchestration boundary.
 
 ---
 
 ### 3) Retries, timeouts & backoff
-Open `exercises/02_retries_and_timeouts.py`:
-```python
-from datetime import timedelta
-import random
-import time
-
-from prefect import flow, task
-
-@task(retries=3, retry_delay_seconds=2, timeout_seconds=10)
-def flaky_call() -> int:
-    # Emulate a transient failure (e.g., 30% error rate)
-    if random.random() < 0.3:
-        raise RuntimeError("Transient upstream error")
-    time.sleep(0.2)
-    return 42
-
-@flow(name="robust-flow")
-def robust_flow():
-    return flaky_call()
-
-if __name__ == "__main__":
-    print(robust_flow())
+Open and run:
+```bash
+python exercises/02_retries_and_timeouts.py
 ```
-
-- `retries=3` + `retry_delay_seconds=2` gives basic backoff (you can implement exponential by increasing delay inside the task or chaining small waits).
+- `retries=3` + `retry_delay_seconds=2` gives basic backoff (augment with jitter if you want).
 - `timeout_seconds` prevents hung tasks from blocking forever.
 
-> Tip: For **exponential backoff with jitter**, you can wrap the body with a loop and use `time.sleep(min(max_delay, base * 2**attempt + random.random()))` when catching exceptions.
+> Tip: For exponential backoff with jitter, adapt a loop and `time.sleep(min(max_delay, base * 2**attempt + random.random()))` on exceptions.
 
 ---
 
-### 4) Resilience patterns (fallbacks & circuit breaker)
-Open `exercises/03_resilience_patterns.py`:
-```python
-import time
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Optional
-
-from prefect import flow, task
-
-@dataclass
-class Circuit:
-    failures: int = 0
-    threshold: int = 3
-    open_until: Optional[float] = None  # epoch seconds
-
-    def allow(self) -> bool:
-        now = time.time()
-        if self.open_until and now < self.open_until:
-            return False
-        return True
-
-    def record_failure(self, cooldown_s: int = 30):
-        self.failures += 1
-        if self.failures >= self.threshold:
-            self.open_until = time.time() + cooldown_s
-
-    def reset(self):
-        self.failures = 0
-        self.open_until = None
-
-circuit = Circuit(threshold=3)
-
-@task(retries=2, retry_delay_seconds=1)
-def primary_provider(q: str) -> str:
-    # Pretend this is a remote API that sometimes degrades
-    if not circuit.allow():
-        raise RuntimeError("Circuit open")
-    # Simulate 50% failure
-    if hash((q, datetime.utcnow().minute)) % 2 == 0:
-        circuit.record_failure(cooldown_s=20)
-        raise RuntimeError("Primary provider failure")
-    circuit.reset()
-    return f"primary:{q}"
-
-@task
-def secondary_provider(q: str) -> str:
-    # Always works but poorer quality / higher latency
-    time.sleep(0.3)
-    return f"secondary:{q}"
-
-@flow(name="fallback-with-circuit")
-def answer(q: str) -> str:
-    try:
-        return primary_provider(q)
-    except Exception:
-        return secondary_provider(q)
-
-if __name__ == "__main__":
-    print(answer("hello"))
+### 4) Resilience patterns (fallback & circuit breaker)
+Open and run:
+```bash
+python exercises/03_resilience_patterns.py
 ```
-
-- **Circuit breaker** prevents hammering a failing upstream.
+- **Circuit breaker** avoids hammering a failing upstream.
 - **Fallback** ensures graceful degradation instead of full failure.
 
 ---
 
-### 5) Scheduling the flow (cron)
-We’ll ship a scheduled deployment to run daily at **09:00 Europe/Madrid**.
-
-Create `exercises/04_scheduling.py`:
-```python
-from prefect import flow
-
-@flow
-def daily_job():
-    # Put your end-to-end pipeline here (e.g., etl())
-    return "ok"
-
-if __name__ == "__main__":
-    # For local ad-hoc run
-    print(daily_job())
+### 5) Scheduling the flow (cron, Europe/Madrid)
+Create the scheduled deployment for `daily_job`:
+```bash
+# Build & apply deployment (cron 09:00 Europe/Madrid)
+python exercises/04_build_deployment.py
 ```
-
-**Create a deployment with a cron schedule** (example, via Python API):
-```python
-# file: exercises/04_build_deployment.py
-from prefect import flow
-from prefect.deployments import Deployment
-from prefect.server.schemas.schedules import CronSchedule
-from exercises._04_scheduling import daily_job  # adjust import if needed
-
-if __name__ == "__main__":
-    deployment = Deployment.build_from_flow(
-        flow=daily_job,
-        name="daily-0900",
-        schedule=(CronSchedule(cron="0 9 * * *", timezone="Europe/Madrid")),
-        tags=["week-10"],
-        parameters={},  # if your flow uses parameters
-    )
-    deployment.apply()
-    print("Deployment created. Start an agent to pick it up.")
-```
-
-> Run an agent/worker locally so scheduled runs can execute. Check Prefect docs for the agent/worker command in your version. Keep logs on to verify triggers, states, and durations.
+This registers a deployment (e.g., `daily_job / daily-0900`) in Prefect. You can verify later in the UI.
 
 ---
 
-### 6) Observability checklist
-- Log run IDs, start/end times, and states.
-- Capture task durations (Prefect UI/CLI already shows this).
-- Keep parameters & env in the run metadata (for reproducibility).
-- If using external calls, include a **correlation ID** per run for tracing downstream logs.
+### 6) Bring up the orchestration stack (Docker Compose)
+We’ll run **Prefect Orion (UI/API)**, a **Prefect Worker**, and the **.NET Orchestrator (Pipelines.Api)**.
+
+**6.1) Get the deployment ID**
+```bash
+docker compose run --rm prefect-worker bash -lc "prefect deployment ls"
+# copy the ID for daily_job/daily-0900 (or your chosen deployment)
+```
+
+**6.2) Set environment and start the stack**
+Create a `.env` file next to `docker-compose.yml`:
+```env
+ETL_DEPLOYMENT_ID=<paste-the-deployment-id-here>
+```
+Then build and launch:
+```bash
+docker compose build
+docker compose up
+```
+- Prefect UI → http://localhost:4200  
+- Pipelines.Api → http://localhost:8080/healthz
+
+**What’s running:**
+- `prefect-server`: Orion UI + API (`http://prefect-server:4200` inside the network).
+- `prefect-worker`: listens on queue **week-10** and executes flows from `exercises/` (mounted).
+- `pipelines-api`: .NET 8 Minimal API that triggers/checks flows via Prefect API.
+
+---
+
+### 7) Trigger & monitor via .NET
+**Start a flow run**:
+```bash
+curl -X POST http://localhost:8080/api/etl/start
+# → {"run_id":"<uuid>","status":"scheduled"}
+```
+**Check status**:
+```bash
+curl http://localhost:8080/api/etl/status/<uuid>
+# → {"run_id":"<uuid>","state":"Completed"}
+```
+**List recent runs** (reads `runs/metrics.csv`):
+```bash
+curl http://localhost:8080/api/etl/runs
+```
+> CSV schema: `timestamp,flow,state,duration_ms,notes`. The .NET API appends a row on submission; the Python logger in `exercises/05_run_logger.py` appends outcome/duration if you run flows ad‑hoc from Python.
+
+---
+
+### 8) Observability checklist
+- Log **run IDs**, **start/end times**, and **states** (UI/CLI + CSV).
+- Capture **task durations** (Prefect UI already shows this).
+- Keep **parameters & env** in run metadata (reproducibility).
+- Use a **correlation ID** per run if you call external systems.
+
+---
+
+### 9) Troubleshooting (Common Issues)
+- **UI Port Conflict (4200)** → run on a different port:
+  ```bash
+  prefect server start --host 127.0.0.1 --port 4300
+  ```
+- **Worker Queue Mismatch** → deployment tagged `"week-10"`; worker must start with `-q week-10`.
+- **API URL Differences** → local: `http://127.0.0.1:4200/api`; in compose: `http://prefect-server:4200/api`.
+- **Missing Packages (`ModuleNotFoundError`)** → venv not active or deps not installed. Reinstall from `env/requirements.txt`.
+- **Deployment Not Running** → ensure **server** and a **worker** are running; without worker, schedules won’t execute.
+- **Stale/Orphan Runs** → restart server + worker; consider removing `.prefect/` if local state corrupted.
 
 ---
 
 ## Deliverables
-- `env/requirements.txt` frozen (after installing `env/requirements.base.txt`).
+- `env/requirements.txt` frozen.
 - Runnable examples in `exercises/`:
   - `01_basic_flow.py`
   - `02_retries_and_timeouts.py`
   - `03_resilience_patterns.py`
-  - `04_scheduling.py` (+ optional `04_build_deployment.py`)
-- A scheduled deployment created (daily cron) and visible in your local UI/CLI.
-- Short note (Markdown or CSV) capturing a few run IDs, states, and durations.
+  - `04_scheduling.py` (+ `04_build_deployment.py`)
+  - (optional) `05_run_logger.py` for CSV logging
+- **Deployment** created (daily cron at 09:00 Europe/Madrid) and visible in UI.
+- **Docker Compose** stack up (Prefect server + worker + Pipelines.Api).
+- .NET endpoints tested: `/healthz`, `POST /api/etl/start`, `GET /api/etl/status/{id}`, `GET /api/etl/runs`.
+- Short CSV/Markdown note capturing a few run IDs, states, and durations.
 
 ---
 
@@ -251,6 +174,7 @@ if __name__ == "__main__":
     README.md
     CHECKLIST.md
     .gitignore
+    docker-compose.yml
     env/
       setup.ps1
       setup.sh
@@ -258,11 +182,21 @@ if __name__ == "__main__":
       requirements.txt
     resources/
       links.md
+      agent_worker.md
     exercises/
       01_basic_flow.py
       02_retries_and_timeouts.py
       03_resilience_patterns.py
       04_scheduling.py
       04_build_deployment.py
+      05_run_logger.py
       04_conceptual_questions.md
+    runs/
+      metrics.csv
+      .gitkeep
+    src/
+      Pipelines.Api/
+        Pipelines.Api.csproj
+        Program.cs
+        Dockerfile
 ```
