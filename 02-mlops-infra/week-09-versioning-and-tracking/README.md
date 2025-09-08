@@ -89,32 +89,41 @@ Reflect on:
 
 ---
 
+### 6) .NET Hook: Serving MLflow
+
+This week also includes a **.NET 9 Minimal API** that proxies MLflow so you can expose experiment data in an enterprise-ready stack.
+
+Steps:
+1. Go to: `samples/dotnet/Tracking.Api/`
+2. Configure MLflow base URL in `appsettings.json` or via env var:
+   ```bash
+   export MLflow__BaseUrl=http://localhost:5000
+   ```
+3. Run the API:
+   ```bash
+   dotnet run
+   # or with Docker
+   docker build -t tracking-api:latest .
+   docker run -p 8080:8080 -e MLflow__BaseUrl=http://host.docker.internal:5000 tracking-api:latest
+   ```
+4. Check health: `GET http://localhost:8080/healthz`
+5. List experiments: `GET http://localhost:8080/mlflow/experiments`
+
+Endpoints exposed:
+- `/mlflow/experiments` → MLflow `experiments/list`
+- `/mlflow/runs/{experimentId}` → MLflow `runs/search`
+- `/mlflow/runs/{runId}/artifacts` → MLflow `artifacts/list`
+
+Resilience: uses `HttpClientFactory` + Polly retries with backoff and 10s timeout.
+
+Deliverable: prove you can fetch MLflow experiments through the .NET API.
+
+---
+
 ## Deliverables
 - `env/requirements.txt` frozen.
 - Dataset tracked with DVC (`.dvc` file).
 - MLflow run with metrics & artifacts logged.
 - Reproducibility test passing.
 - `04_conceptual_questions.md` answered.
-
----
-
-## Folder layout (Week 09)
-```
-02-mlops-infra/
-  week-09-versioning-and-tracking/
-    README.md
-    CHECKLIST.md
-    .gitignore
-    env/
-      setup.ps1
-      setup.sh
-      requirements.base.txt
-      requirements.txt
-    resources/
-      links.md
-    exercises/
-      01_dvc_basics.py
-      02_mlflow_tracking.py
-      03_reproducibility_test.py
-      04_conceptual_questions.md
-```
+- .NET API (`Tracking.Api`) working and fetching MLflow experiments.

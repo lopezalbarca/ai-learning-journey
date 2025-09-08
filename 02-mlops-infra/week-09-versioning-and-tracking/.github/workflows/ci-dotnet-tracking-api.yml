@@ -1,0 +1,65 @@
+name: ci-dotnet-tracking-api
+
+on:
+  push:
+    paths:
+      - '02-mlops-infra/week-09-versioning-and-tracking/samples/dotnet/Tracking.Api/**'
+      - '02-mlops-infra/week-09-versioning-and-tracking/.github/workflows/ci-dotnet-tracking-api.yml'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 02-mlops-infra/week-09-versioning-and-tracking/samples/dotnet/Tracking.Api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Publish
+        run: dotnet publish -c Release -o out
+
+  docker:
+    needs: build-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 02-mlops-infra/week-09-versioning-and-tracking/samples/dotnet/Tracking.Api
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/tracking-api:latest
+
+  # deploy:
+  #   needs: docker
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Azure login
+  #       uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #     - name: Deploy to Azure Container Apps
+  #       uses: azure/container-apps-deploy-action@v2
+  #       with:
+  #         imageToDeploy: ghcr.io/${{ github.repository_owner }}/tracking-api:latest
+  #         containerAppName: tracking-api
+  #         resourceGroup: my-rg
+  #         containerAppEnvironment: my-aca-env
